@@ -176,5 +176,56 @@ public class StudentController {
 
 Após essa abordagem inicial iremos melhorar nosso exemplo
 Adicionaremos a dependência HATEOAS que irá organizar nossos retornos para os possíveis consumidores.
-Com o HATEOAS podemos criar links para nosso objetos de forma simples e fácil.
+Com o HATEOAS podemos criar links para nossos objetos de forma simples e fácil.
 
+Para implementarmos esse links devemos adicionar primeiramente a dependência HATEOAS:
+
+``` xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-hateoas</artifactId>
+</dependency>
+```
+
+Em seguida modificaremos nossa controller, para que as nossas entidades listadas sejam linkadas entre si:
+
+``` java
+    @GetMapping("/students/{id}")
+    EntityModel<Student> getStudent(@PathVariable Integer id) {
+        Student student;
+        try {
+            student = repository.findById(id).orElseThrow(() -> new StudentNotFoundException(id));
+        } catch (StudentNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return EntityModel.of(student,
+                linkTo(methodOn(StudentController.class).getStudent(id)).withSelfRel(),
+                linkTo(methodOn(StudentController.class).getAllStudents()).withSelfRel());
+    }
+```
+
+Aqui está nosso método para obter um estudante por id.
+
+A EntityModel possibilita que o objeto student seja representado, e ainda os links que desejarmos estejam contidos no mesmo objeto.
+
+O método linkTo() forma o link para o próprio student, bem como para o resultado com todos os students.
+
+``` java
+    @GetMapping("/students")
+    CollectionModel<EntityModel<Student>> getAllStudents() {
+        List<EntityModel<Student>> students = repository.findAll().stream().
+                map(student -> EntityModel.of(student,
+                        linkTo(methodOn(StudentController.class).getStudent(student.getId())).withSelfRel(),
+                        linkTo(methodOn(StudentController.class).getAllStudents()).withRel("students")))
+                .collect(Collectors.toList());
+        return CollectionModel.of(students, linkTo(methodOn(StudentController.class).getAllStudents()).withSelfRel());
+    }
+```
+
+Aqui como ficam todos os resultados exibidos.
+Aqui utilizamos uma CollectionModel, que agrupa todos as EntityModel.
+De forma geral, cada entidade terá o link para ela mesma, para todas as entidades, e para a collection.
+
+Referências:
+
+[Building REST services with Spring](https://spring.io/guides/tutorials/rest#_the_story_so_far)
