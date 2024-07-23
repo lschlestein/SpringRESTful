@@ -3,9 +3,15 @@ package com.springboot.restcontroller.Controller;
 import com.springboot.restcontroller.Exception.StudentNotFoundException;
 import com.springboot.restcontroller.Model.Student;
 import com.springboot.restcontroller.Repository.StudentRepository;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 public class StudentController {
@@ -17,8 +23,13 @@ public class StudentController {
     }
 
     @GetMapping("/students")
-    List<Student> all() {
-        return repository.findAll();
+    CollectionModel<EntityModel<Student>> getAllStudents() {
+        List<EntityModel<Student>> students = repository.findAll().stream().
+                map(student -> EntityModel.of(student,
+                        linkTo(methodOn(StudentController.class).getStudent(student.getId())).withSelfRel(),
+                        linkTo(methodOn(StudentController.class).getAllStudents()).withRel("students")))
+                .collect(Collectors.toList());
+        return CollectionModel.of(students, linkTo(methodOn(StudentController.class).getAllStudents()).withSelfRel());
     }
 
     @PostMapping("/students")
@@ -27,8 +38,16 @@ public class StudentController {
     }
 
     @GetMapping("/students/{id}")
-    Student getStudent(@PathVariable Integer id) throws StudentNotFoundException {
-        return repository.findById(id).orElseThrow(() -> new StudentNotFoundException(id));
+    EntityModel<Student> getStudent(@PathVariable Integer id) {
+        Student student;
+        try {
+            student = repository.findById(id).orElseThrow(() -> new StudentNotFoundException(id));
+        } catch (StudentNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return EntityModel.of(student,
+                linkTo(methodOn(StudentController.class).getStudent(id)).withSelfRel(),
+                linkTo(methodOn(StudentController.class).getAllStudents()).withSelfRel());
     }
 
     @PutMapping("/students/{id}")

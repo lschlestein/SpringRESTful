@@ -173,3 +173,8 @@ public class StudentController {
     }
 }
 ```
+
+Após essa abordagem inicial iremos melhorar nosso exemplo
+Adicionaremos a dependência HATEOAS que irá organizar nossos retornos para os possíveis consumidores.
+Com o HATEOAS podemos criar links para nosso objetos de forma simples e fácil.
+
